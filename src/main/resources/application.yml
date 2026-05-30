@@ -1,0 +1,11 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ashare-app
+
+ashare:
+  eastmoney:
+    quote-base-url: https://push2delay.eastmoney.com/api/qt
+    limit-pool-url: https://push2ex.eastmoney.com/getTopicZTPool
