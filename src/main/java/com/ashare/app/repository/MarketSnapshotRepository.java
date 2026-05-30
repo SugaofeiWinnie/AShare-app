@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -36,6 +37,36 @@ public class MarketSnapshotRepository {
         (rs, rowNum) -> toQuoteItem(rs),
         tradeDate,
         type.name());
+  }
+
+  public Optional<LocalDate> resolveTradeDate(LocalDate requested) {
+    List<LocalDate> earlierOrEqual = jdbcTemplate.query(
+        """
+        select trade_date
+        from market_snapshots
+        where trade_date <= ?
+        group by trade_date
+        order by trade_date desc
+        limit 1
+        """,
+        (rs, rowNum) -> rs.getDate("trade_date").toLocalDate(),
+        requested);
+    if (!earlierOrEqual.isEmpty()) {
+      return Optional.of(earlierOrEqual.get(0));
+    }
+
+    List<LocalDate> later = jdbcTemplate.query(
+        """
+        select trade_date
+        from market_snapshots
+        where trade_date >= ?
+        group by trade_date
+        order by trade_date asc
+        limit 1
+        """,
+        (rs, rowNum) -> rs.getDate("trade_date").toLocalDate(),
+        requested);
+    return later.stream().findFirst();
   }
 
   public void save(LocalDate tradeDate, SnapshotType type, List<QuoteItem> rows) {

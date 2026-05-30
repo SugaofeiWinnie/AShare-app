@@ -1,8 +1,12 @@
 package com.ashare.app.controller;
 
+import com.ashare.app.dto.MarketDtos.AiReviewRequest;
+import com.ashare.app.dto.MarketDtos.AiReviewResponse;
 import com.ashare.app.dto.MarketDtos.BoardResponse;
+import com.ashare.app.dto.MarketDtos.FundFlowOverview;
 import com.ashare.app.dto.MarketDtos.LadderSummary;
 import com.ashare.app.dto.MarketDtos.MarketOverview;
+import com.ashare.app.dto.MarketDtos.PreopenBrief;
 import com.ashare.app.dto.MarketDtos.QuoteItem;
 import com.ashare.app.service.MarketService;
 import jakarta.validation.constraints.Max;
@@ -13,6 +17,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,5 +61,20 @@ public class MarketController {
   @GetMapping("/ladder")
   public LadderSummary ladder() {
     return marketService.ladder();
+  }
+
+  @GetMapping("/preopen")
+  public PreopenBrief preopen() {
+    return marketService.preopen();
+  }
+
+  @GetMapping("/funds")
+  public FundFlowOverview funds() {
+    return marketService.funds();
+  }
+
+  @PostMapping("/ai-review")
+  public AiReviewResponse aiReview(@RequestBody AiReviewRequest request) {
+    return marketService.aiReview(request);
   }
 }

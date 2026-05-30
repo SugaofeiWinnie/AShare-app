@@ -11,6 +11,9 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 ashare:
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-5.2}
   scheduler:
     snapshot-cron: 0 40 15 * * MON-FRI
   eastmoney:
