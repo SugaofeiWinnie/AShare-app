@@ -68,6 +68,7 @@ public final class MarketDtos {
       MarketMood mood,
       String analysis,
       LadderSummary ladder,
+      String tradeDate,
       String updatedAt) {}
 
   public record BoardResponse(List<QuoteItem> rows) {}

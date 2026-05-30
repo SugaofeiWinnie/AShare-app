@@ -4,8 +4,15 @@ server:
 spring:
   application:
     name: ashare-app
+  datasource:
+    url: ${ASHARE_DB_URL:jdbc:mysql://127.0.0.1:3306/ashare?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${ASHARE_DB_USERNAME:ashare_app}
+    password: ${ASHARE_DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
 ashare:
+  scheduler:
+    snapshot-cron: 0 40 15 * * MON-FRI
   eastmoney:
     quote-base-url: https://push2delay.eastmoney.com/api/qt
     trend-base-url: https://push2delay.eastmoney.com/api/qt/stock/trends2/get

@@ -7,12 +7,16 @@ import com.ashare.app.dto.MarketDtos.QuoteItem;
 import com.ashare.app.service.MarketService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.time.LocalDate;
 import java.util.List;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @Validated
 @RestController
@@ -25,13 +29,19 @@ public class MarketController {
   }
 
   @GetMapping("/overview")
-  public MarketOverview overview() {
-    return marketService.overview();
+  public MarketOverview overview(
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    try {
+      return marketService.overview(date);
+    } catch (IllegalArgumentException ex) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, ex.getMessage(), ex);
+    }
   }
 
   @GetMapping("/indices")
-  public List<QuoteItem> indices() {
-    return marketService.indices();
+  public List<QuoteItem> indices(
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    return marketService.indices(date);
   }
 
   @GetMapping("/boards")

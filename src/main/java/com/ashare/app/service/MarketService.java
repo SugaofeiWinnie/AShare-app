@@ -8,9 +8,12 @@ import com.ashare.app.dto.MarketDtos.MarketMood;
 import com.ashare.app.dto.MarketDtos.MarketOverview;
 import com.ashare.app.dto.MarketDtos.QuoteItem;
 import com.ashare.app.dto.MarketDtos.TrendPoint;
+import com.ashare.app.repository.MarketSnapshotRepository;
+import com.ashare.app.repository.MarketSnapshotRepository.SnapshotType;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,40 +33,66 @@ public class MarketService {
   private static final List<String> INDEX_IDS = List.of(
       "1.000001", "0.399001", "0.399006", "1.000688", "1.000016", "1.000300");
   private static final DateTimeFormatter TRADE_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
+  private static final DateTimeFormatter DISPLAY_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
   private final RestTemplate restTemplate;
+  private final MarketSnapshotRepository snapshotRepository;
   private final String quoteBaseUrl;
   private final String trendBaseUrl;
   private final String limitPoolUrl;
 
   public MarketService(
       RestTemplate restTemplate,
+      MarketSnapshotRepository snapshotRepository,
       @Value("${ashare.eastmoney.quote-base-url}") String quoteBaseUrl,
       @Value("${ashare.eastmoney.trend-base-url}") String trendBaseUrl,
       @Value("${ashare.eastmoney.limit-pool-url}") String limitPoolUrl) {
     this.restTemplate = restTemplate;
+    this.snapshotRepository = snapshotRepository;
     this.quoteBaseUrl = quoteBaseUrl;
     this.trendBaseUrl = trendBaseUrl;
     this.limitPoolUrl = limitPoolUrl;
   }
 
   public MarketOverview overview() {
+    MarketOverview overview = liveOverview();
+    if (shouldPersistLiveSnapshot(overview)) {
+      snapshot(overview);
+    }
+    return overview;
+  }
+
+  public MarketOverview overview(LocalDate date) {
+    if (date == null || !date.isBefore(LocalDate.now())) {
+      return overview();
+    }
+    return snapshotOverview(date);
+  }
+
+  public void captureTodaySnapshot() {
+    snapshot(liveOverview());
+  }
+
+  public List<QuoteItem> indices() {
+    return liveIndices();
+  }
+
+  public List<QuoteItem> indices(LocalDate date) {
+    if (date == null || !date.isBefore(LocalDate.now())) {
+      return liveIndices();
+    }
+    return snapshotRepository.find(date, SnapshotType.INDEX);
+  }
+
+  private MarketOverview liveOverview() {
     List<QuoteItem> indices = indices();
     List<QuoteItem> industries = boards("industry", "top", 80).rows();
     List<QuoteItem> concepts = boards("concept", "top", 80).rows();
     LadderSummary ladder = ladder();
-    MarketMood mood = mood(indices, industries, concepts);
-    return new MarketOverview(
-        indices,
-        industries,
-        concepts,
-        mood,
-        buildAnalysis(mood, industries, concepts),
-        ladder,
-        LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+    return buildOverview(indices, industries, concepts, ladder, resolveTradeDate(indices));
   }
 
-  public List<QuoteItem> indices() {
+  private List<QuoteItem> liveIndices() {
     Map<String, List<TrendPoint>> trends = INDEX_IDS.stream()
         .collect(Collectors.toMap(this::plainCode, this::trendRows));
     return quoteRows("ulist.np/get", Map.of("secids", String.join(",", INDEX_IDS))).stream()
@@ -90,6 +119,64 @@ public class MarketService {
         .limit(Math.max(1, Math.min(limit, 80)))
         .toList();
     return new BoardResponse(rows);
+  }
+
+  private MarketOverview snapshotOverview(LocalDate date) {
+    List<QuoteItem> indices = snapshotRepository.find(date, SnapshotType.INDEX);
+    List<QuoteItem> industries = snapshotRepository.find(date, SnapshotType.INDUSTRY);
+    List<QuoteItem> concepts = snapshotRepository.find(date, SnapshotType.CONCEPT);
+    if (indices.isEmpty() && industries.isEmpty() && concepts.isEmpty()) {
+      throw new IllegalArgumentException("暂无该日期的收盘快照数据");
+    }
+    LadderSummary ladder = new LadderSummary(
+        date.format(TRADE_DATE),
+        date.minusDays(1).format(TRADE_DATE),
+        0,
+        0,
+        0,
+        0,
+        List.of());
+    return buildOverview(indices, industries, concepts, ladder, date);
+  }
+
+  private MarketOverview buildOverview(
+      List<QuoteItem> indices,
+      List<QuoteItem> industries,
+      List<QuoteItem> concepts,
+      LadderSummary ladder,
+      LocalDate tradeDate) {
+    MarketMood mood = mood(indices, industries, concepts);
+    return new MarketOverview(
+        indices,
+        industries,
+        concepts,
+        mood,
+        buildAnalysis(mood, industries, concepts),
+        ladder,
+        tradeDate.toString(),
+        LocalDateTime.now().format(DISPLAY_TIME));
+  }
+
+  private void snapshot(MarketOverview overview) {
+    LocalDate tradeDate = LocalDate.parse(overview.tradeDate());
+    snapshotRepository.save(tradeDate, SnapshotType.INDEX, overview.indices());
+    snapshotRepository.save(tradeDate, SnapshotType.INDUSTRY, overview.industries());
+    snapshotRepository.save(tradeDate, SnapshotType.CONCEPT, overview.concepts());
+  }
+
+  private boolean shouldPersistLiveSnapshot(MarketOverview overview) {
+    LocalDate tradeDate = LocalDate.parse(overview.tradeDate());
+    return tradeDate.isBefore(LocalDate.now()) || LocalTime.now().isAfter(LocalTime.of(15, 35));
+  }
+
+  private LocalDate resolveTradeDate(List<QuoteItem> indices) {
+    return indices.stream()
+        .flatMap(item -> item.trends().stream())
+        .map(TrendPoint::time)
+        .filter(time -> time != null && time.length() >= 10)
+        .map(time -> LocalDate.parse(time.substring(0, 10)))
+        .findFirst()
+        .orElse(LocalDate.now());
   }
 
   public LadderSummary ladder() {
