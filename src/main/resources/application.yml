@@ -8,4 +8,5 @@ spring:
 ashare:
   eastmoney:
     quote-base-url: https://push2delay.eastmoney.com/api/qt
+    trend-base-url: https://push2delay.eastmoney.com/api/qt/stock/trends2/get
     limit-pool-url: https://push2ex.eastmoney.com/getTopicZTPool

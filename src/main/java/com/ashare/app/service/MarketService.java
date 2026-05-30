@@ -7,6 +7,7 @@ import com.ashare.app.dto.MarketDtos.LimitStock;
 import com.ashare.app.dto.MarketDtos.MarketMood;
 import com.ashare.app.dto.MarketDtos.MarketOverview;
 import com.ashare.app.dto.MarketDtos.QuoteItem;
+import com.ashare.app.dto.MarketDtos.TrendPoint;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -32,14 +33,17 @@ public class MarketService {
 
   private final RestTemplate restTemplate;
   private final String quoteBaseUrl;
+  private final String trendBaseUrl;
   private final String limitPoolUrl;
 
   public MarketService(
       RestTemplate restTemplate,
       @Value("${ashare.eastmoney.quote-base-url}") String quoteBaseUrl,
+      @Value("${ashare.eastmoney.trend-base-url}") String trendBaseUrl,
       @Value("${ashare.eastmoney.limit-pool-url}") String limitPoolUrl) {
     this.restTemplate = restTemplate;
     this.quoteBaseUrl = quoteBaseUrl;
+    this.trendBaseUrl = trendBaseUrl;
     this.limitPoolUrl = limitPoolUrl;
   }
 
@@ -60,9 +64,10 @@ public class MarketService {
   }
 
   public List<QuoteItem> indices() {
-    return quoteRows("ulist.np/get", Map.of("secids", String.join(",", INDEX_IDS)))
-        .stream()
-        .map(this::quoteItem)
+    Map<String, List<TrendPoint>> trends = INDEX_IDS.stream()
+        .collect(Collectors.toMap(this::plainCode, this::trendRows));
+    return quoteRows("ulist.np/get", Map.of("secids", String.join(",", INDEX_IDS))).stream()
+        .map(item -> quoteItem(item, trends.getOrDefault(text(item, "f12"), List.of())))
         .toList();
   }
 
@@ -80,7 +85,7 @@ public class MarketService {
             "po", "1",
             "fid", "f3"))
         .stream()
-        .map(this::quoteItem)
+        .map(item -> quoteItem(item, List.of()))
         .sorted(comparator)
         .limit(Math.max(1, Math.min(limit, 80)))
         .toList();
@@ -127,6 +132,35 @@ public class MarketService {
     return rowsFrom(payload.path("data").path("diff"));
   }
 
+  private List<TrendPoint> trendRows(String secid) {
+    try {
+      UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(trendBaseUrl)
+          .queryParam("secid", secid)
+          .queryParam("fields1", "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11")
+          .queryParam("fields2", "f51,f52,f53,f54,f55,f56,f57,f58")
+          .queryParam("ut", "7eea3edcaed734bea9cbfc24409ed989")
+          .queryParam("iscr", "0")
+          .queryParam("iscca", "0")
+          .queryParam("ndays", "1");
+      JsonNode payload = restTemplate.getForObject(builder.toUriString(), JsonNode.class);
+      JsonNode trends = payload.path("data").path("trends");
+      if (!trends.isArray()) {
+        return List.of();
+      }
+
+      List<TrendPoint> rows = new ArrayList<>();
+      trends.forEach(row -> {
+        String[] parts = row.asText().split(",");
+        if (parts.length >= 8) {
+          rows.add(new TrendPoint(parts[0], parseDouble(parts[2]), parseDouble(parts[7])));
+        }
+      });
+      return rows;
+    } catch (RuntimeException ignored) {
+      return List.of();
+    }
+  }
+
   private Pool findLimitPool(LocalDate startDate, int direction) {
     LocalDate cursor = startDate;
     for (int i = 0; i < 12; i += 1) {
@@ -167,7 +201,7 @@ public class MarketService {
     return rows;
   }
 
-  private QuoteItem quoteItem(JsonNode item) {
+  private QuoteItem quoteItem(JsonNode item, List<TrendPoint> trends) {
     return new QuoteItem(
         text(item, "f12"),
         text(item, "f14"),
@@ -176,7 +210,8 @@ public class MarketService {
         number(item, "f4"),
         number(item, "f6"),
         number(item, "f8"),
-        number(item, "f62"));
+        number(item, "f62"),
+        trends);
   }
 
   private LimitStock limitStock(JsonNode item) {
@@ -260,6 +295,19 @@ public class MarketService {
     } catch (RuntimeException ignored) {
       return 0;
     }
+  }
+
+  private double parseDouble(String value) {
+    try {
+      return Double.parseDouble(value);
+    } catch (RuntimeException ignored) {
+      return 0;
+    }
+  }
+
+  private String plainCode(String secid) {
+    int index = secid.indexOf('.');
+    return index >= 0 ? secid.substring(index + 1) : secid;
   }
 
   private int integer(JsonNode item, String field, int fallback) {

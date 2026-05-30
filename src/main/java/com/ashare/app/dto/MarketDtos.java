@@ -13,7 +13,10 @@ public final class MarketDtos {
       double change,
       double amount,
       double turnover,
-      double inflow) {}
+      double inflow,
+      List<TrendPoint> trends) {}
+
+  public record TrendPoint(String time, double price, double average) {}
 
   public record LimitStock(
       String code,
