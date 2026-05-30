@@ -50,38 +50,38 @@ public class MarketService {
       "1.000001", "0.399001", "0.399006", "1.000688", "1.000016", "1.000300");
 
   private static final List<FeedSpec> OVERNIGHT_US = List.of(
-      new FeedSpec("stockanalysis", "etf/spy/", "SPY", "SPY ETF", "US"),
-      new FeedSpec("stockanalysis", "etf/qqq/", "QQQ", "QQQ ETF", "US"),
-      new FeedSpec("stockanalysis", "etf/dia/", "DIA", "DIA ETF", "US"),
-      new FeedSpec("stockanalysis", "etf/iwm/", "IWM", "IWM ETF", "US"));
+      new FeedSpec("stockanalysis", "etf/spy/", "SPY", "标普500ETF", "美股"),
+      new FeedSpec("stockanalysis", "etf/qqq/", "QQQ", "纳指100ETF", "美股"),
+      new FeedSpec("stockanalysis", "etf/dia/", "DIA", "道指ETF", "美股"),
+      new FeedSpec("stockanalysis", "etf/iwm/", "IWM", "罗素2000ETF", "美股"));
 
   private static final List<FeedSpec> CHINESE_ADR = List.of(
-      new FeedSpec("stockanalysis", "stocks/baba/", "BABA", "Alibaba", "ADR"),
-      new FeedSpec("stockanalysis", "stocks/pdd/", "PDD", "PDD", "ADR"),
-      new FeedSpec("stockanalysis", "stocks/jd/", "JD", "JD.com", "ADR"),
-      new FeedSpec("stockanalysis", "stocks/bidu/", "BIDU", "Baidu", "ADR"),
-      new FeedSpec("stockanalysis", "stocks/nio/", "NIO", "NIO", "ADR"),
-      new FeedSpec("stockanalysis", "stocks/xpev/", "XPEV", "Xpeng", "ADR"));
+      new FeedSpec("stockanalysis", "stocks/baba/", "BABA", "阿里巴巴", "中概股"),
+      new FeedSpec("stockanalysis", "stocks/pdd/", "PDD", "拼多多", "中概股"),
+      new FeedSpec("stockanalysis", "stocks/jd/", "JD", "京东", "中概股"),
+      new FeedSpec("stockanalysis", "stocks/bidu/", "BIDU", "百度", "中概股"),
+      new FeedSpec("stockanalysis", "stocks/nio/", "NIO", "蔚来", "中概股"),
+      new FeedSpec("stockanalysis", "stocks/xpev/", "XPEV", "小鹏汽车", "中概股"));
 
   private static final List<FeedSpec> COMMODITIES = List.of(
-      new FeedSpec("stooq", "^xauusd", "XAU/USD", "Gold", "Commodity"),
-      new FeedSpec("stooq", "cl.f", "CL.F", "WTI Crude", "Commodity"),
-      new FeedSpec("stooq", "si.f", "SI.F", "Silver", "Commodity"),
-      new FeedSpec("stooq", "hg.f", "HG.F", "Copper", "Commodity"));
+      new FeedSpec("stooq", "^xauusd", "XAU/USD", "黄金", "商品"),
+      new FeedSpec("stooq", "cl.f", "CL.F", "WTI原油", "商品"),
+      new FeedSpec("stooq", "si.f", "SI.F", "白银", "商品"),
+      new FeedSpec("stooq", "hg.f", "HG.F", "铜", "商品"));
 
   private static final List<FeedSpec> FX = List.of(
-      new FeedSpec("stooq", "usdcny", "USDCNY", "USD/CNY", "FX"),
-      new FeedSpec("stooq", "usdcnh", "USDCNH", "USD/CNH", "FX"),
-      new FeedSpec("stooq", "eurusd", "EURUSD", "EUR/USD", "FX"),
-      new FeedSpec("stooq", "usdjpy", "USDJPY", "USD/JPY", "FX"));
+      new FeedSpec("stooq", "usdcny", "USDCNY", "美元/人民币", "汇率"),
+      new FeedSpec("stooq", "usdcnh", "USDCNH", "美元/离岸人民币", "汇率"),
+      new FeedSpec("stooq", "eurusd", "EURUSD", "欧元/美元", "汇率"),
+      new FeedSpec("stooq", "usdjpy", "USDJPY", "美元/日元", "汇率"));
 
   private static final List<FeedSpec> EARNINGS_WATCHLIST = List.of(
-      new FeedSpec("stockanalysis", "stocks/baba/", "BABA", "Alibaba", "Earnings"),
-      new FeedSpec("stockanalysis", "stocks/pdd/", "PDD", "PDD", "Earnings"),
-      new FeedSpec("stockanalysis", "stocks/jd/", "JD", "JD.com", "Earnings"),
-      new FeedSpec("stockanalysis", "stocks/bidu/", "BIDU", "Baidu", "Earnings"),
-      new FeedSpec("stockanalysis", "stocks/nio/", "NIO", "NIO", "Earnings"),
-      new FeedSpec("stockanalysis", "stocks/xpev/", "XPEV", "Xpeng", "Earnings"));
+      new FeedSpec("stockanalysis", "stocks/baba/", "BABA", "阿里巴巴", "财报"),
+      new FeedSpec("stockanalysis", "stocks/pdd/", "PDD", "拼多多", "财报"),
+      new FeedSpec("stockanalysis", "stocks/jd/", "JD", "京东", "财报"),
+      new FeedSpec("stockanalysis", "stocks/bidu/", "BIDU", "百度", "财报"),
+      new FeedSpec("stockanalysis", "stocks/nio/", "NIO", "蔚来", "财报"),
+      new FeedSpec("stockanalysis", "stocks/xpev/", "XPEV", "小鹏汽车", "财报"));
 
   private static final Pattern STOCK_ANALYSIS_PRICE = Pattern.compile(
       "Real-Time Price.*?([0-9.,]+)\\s+([+-]?[0-9.,]+) \\(([+-]?[0-9.,]+)%\\)",
@@ -146,7 +146,7 @@ public class MarketService {
       return liveIndices();
     }
     LocalDate resolved = snapshotRepository.resolveTradeDate(date)
-        .orElseThrow(() -> new IllegalArgumentException("no historical snapshot available"));
+        .orElseThrow(() -> new IllegalArgumentException("暂无可用的历史行情快照"));
     return snapshotRepository.find(resolved, SnapshotType.INDEX);
   }
 
@@ -235,7 +235,7 @@ public class MarketService {
 
   private MarketOverview snapshotOverview(LocalDate date) {
     LocalDate resolvedDate = snapshotRepository.resolveTradeDate(date)
-        .orElseThrow(() -> new IllegalArgumentException("no historical snapshot available"));
+        .orElseThrow(() -> new IllegalArgumentException("暂无可用的历史行情快照"));
     List<QuoteItem> indices = snapshotRepository.find(resolvedDate, SnapshotType.INDEX);
     List<QuoteItem> industries = snapshotRepository.find(resolvedDate, SnapshotType.INDUSTRY);
     List<QuoteItem> concepts = snapshotRepository.find(resolvedDate, SnapshotType.CONCEPT);
@@ -357,10 +357,10 @@ public class MarketService {
           }
           GlobalMarketItem quote = fetchStockAnalysisQuote(spec);
           String note = quote.pct() > 0
-              ? "The stock looks stronger into earnings."
+              ? "财报前走势偏强，市场情绪相对积极。"
               : quote.pct() < 0
-                  ? "The stock is softer into earnings."
-                  : "The stock is stable into earnings.";
+                  ? "财报前走势偏弱，注意波动风险。"
+                  : "财报前走势平稳，等待新信息确认。";
           return new CalendarItem(spec.code(), spec.name(), earningsDate, note);
         })
         .filter(item -> item != null)
@@ -379,23 +379,23 @@ public class MarketService {
     GlobalMarketItem fxLead = fx.stream().max(Comparator.comparingDouble(item -> Math.abs(item.pct()))).orElse(null);
     List<String> items = new ArrayList<>();
     if (usLead != null) {
-      items.add("Overnight US lead: " + usLead.name() + formatMove(usLead));
+      items.add("隔夜美股波动焦点：" + usLead.name() + formatMove(usLead));
     }
     if (adrLead != null) {
-      items.add("China ADR lead: " + adrLead.name() + formatMove(adrLead));
+      items.add("中概股情绪焦点：" + adrLead.name() + formatMove(adrLead));
     }
     if (commodityLead != null) {
-      items.add("Commodity focus: " + commodityLead.name() + formatMove(commodityLead));
+      items.add("商品市场重点：" + commodityLead.name() + formatMove(commodityLead));
     }
     if (fxLead != null) {
-      items.add("FX watch: " + fxLead.name() + formatMove(fxLead));
+      items.add("汇率观察重点：" + fxLead.name() + formatMove(fxLead));
     }
     if (!earningsCalendar.isEmpty()) {
       CalendarItem first = earningsCalendar.get(0);
-      items.add("Earnings watch: " + first.name() + " (" + first.earningsDate() + ")");
+      items.add("近期财报关注：" + first.name() + "（" + first.earningsDate() + "）");
     }
     while (items.size() < 4) {
-      items.add("Watch volume, leadership rotation and index breadth after the open.");
+      items.add("开盘后重点观察成交量、领涨方向切换和市场宽度。");
     }
     return items.stream().limit(5).toList();
   }
@@ -412,19 +412,19 @@ public class MarketService {
     GlobalMarketItem comm = commodities.stream().max(Comparator.comparingDouble(item -> Math.abs(item.pct()))).orElse(null);
     GlobalMarketItem rate = fx.stream().max(Comparator.comparingDouble(item -> Math.abs(item.pct()))).orElse(null);
     if (us != null && adr != null) {
-      items.add("If US tech stays firm, China tech and AI names may keep repairing.");
+      items.add("如果美股科技线继续偏强，中概科技和AI方向可能延续修复。");
     }
     if (comm != null) {
-      items.add(comm.name() + " swings may keep energy and resources active.");
+      items.add(comm.name() + "波动放大时，能源和资源品方向可能更活跃。");
     }
     if (rate != null) {
-      items.add("A one-way FX move can accelerate sector rotation.");
+      items.add("汇率若出现单边波动，可能加快外资敏感板块的轮动。");
     }
     if (!earningsCalendar.isEmpty()) {
-      items.add("Ahead of earnings, quality names with clear guidance may attract premium.");
+      items.add("财报窗口临近时，业绩确定性较强的公司更容易获得资金溢价。");
     }
     if (items.isEmpty()) {
-      items.add("The open looks neutral; wait for volume confirmation and the first leadership trade.");
+      items.add("盘前信号偏中性，开盘后先等待量能和领涨方向确认。");
     }
     return items.stream().limit(5).toList();
   }
@@ -436,16 +436,16 @@ public class MarketService {
       List<GlobalMarketItem> fx,
       List<CalendarItem> earningsCalendar,
       List<String> hotPredictions) {
-    String us = overnightUs.stream().map(this::briefMove).collect(Collectors.joining(", "));
-    String adr = chineseAdr.stream().limit(3).map(this::briefMove).collect(Collectors.joining(", "));
-    String comm = commodities.stream().limit(2).map(this::briefMove).collect(Collectors.joining(", "));
-    String fxText = fx.stream().limit(2).map(this::briefMove).collect(Collectors.joining(", "));
+    String us = overnightUs.stream().map(this::briefMove).collect(Collectors.joining("，"));
+    String adr = chineseAdr.stream().limit(3).map(this::briefMove).collect(Collectors.joining("，"));
+    String comm = commodities.stream().limit(2).map(this::briefMove).collect(Collectors.joining("，"));
+    String fxText = fx.stream().limit(2).map(this::briefMove).collect(Collectors.joining("，"));
     String earnings = earningsCalendar.stream().limit(3)
         .map(item -> item.name() + " " + item.earningsDate())
-        .collect(Collectors.joining(", "));
-    String predict = hotPredictions.stream().limit(3).collect(Collectors.joining("; "));
+        .collect(Collectors.joining("，"));
+    String predict = hotPredictions.stream().limit(3).collect(Collectors.joining("；"));
     return String.format(Locale.CHINA,
-        "Overnight US: %s. ADRs: %s. Commodities: %s. FX: %s. Earnings: %s. Predictions: %s.",
+        "隔夜美股：%s。中概股：%s。商品市场：%s。汇率：%s。财报关注：%s。热点预测：%s。",
         us, adr, comm, fxText, earnings, predict);
   }
 
@@ -458,10 +458,10 @@ public class MarketService {
       return List.of();
     }
     List<NorthboundItem> rows = new ArrayList<>();
-    rows.add(toNorthbound("Northbound Shanghai", "hk2sh", root.path("hk2sh")));
-    rows.add(toNorthbound("Northbound Shenzhen", "hk2sz", root.path("hk2sz")));
-    rows.add(toNorthbound("Southbound Shanghai", "sh2hk", root.path("sh2hk")));
-    rows.add(toNorthbound("Southbound Shenzhen", "sz2hk", root.path("sz2hk")));
+    rows.add(toNorthbound("沪股通", "hk2sh", root.path("hk2sh")));
+    rows.add(toNorthbound("深股通", "hk2sz", root.path("hk2sz")));
+    rows.add(toNorthbound("港股通(沪)", "sh2hk", root.path("sh2hk")));
+    rows.add(toNorthbound("港股通(深)", "sz2hk", root.path("sz2hk")));
     return rows;
   }
 
@@ -478,8 +478,8 @@ public class MarketService {
 
   private List<MainFundItem> mainFunds() {
     List<MainFundItem> items = new ArrayList<>();
-    items.addAll(boardByInflow("industry", "Industry", 8));
-    items.addAll(boardByInflow("concept", "Concept", 8));
+    items.addAll(boardByInflow("industry", "行业板块", 8));
+    items.addAll(boardByInflow("concept", "概念板块", 8));
     return items.stream()
         .sorted(Comparator.comparingDouble(MainFundItem::inflow).reversed())
         .limit(16)
@@ -532,7 +532,7 @@ public class MarketService {
         rows.add(new DragonTigerItem(
             text(row, "SECURITY_CODE"),
             text(row, "SECURITY_NAME_ABBR"),
-            fallback(text(row, "EXPLANATION"), "LHB observation"),
+            fallback(text(row, "EXPLANATION"), "龙虎榜观察"),
             number(row, "CLOSE_PRICE"),
             number(row, "CHANGE_RATE"),
             number(row, "NET_BUY_AMT") != 0 ? number(row, "NET_BUY_AMT") : number(row, "BILLBOARD_NET_AMT"),
@@ -553,48 +553,47 @@ public class MarketService {
 
   private String buildAiReviewPrompt(AiReviewRequest request) {
     return """
-        You are a Chinese A-share post-market review assistant.
-        Please answer in Chinese.
-        Requirements:
-        1. Judge whether the user's view and actions match the current market tone.
-        2. Point out the key risks and the signals worth watching.
-        3. Give 3 actionable suggestions for tomorrow.
-        4. Keep the tone professional and concise.
+        你是一名A股盘后复盘助手。请基于用户输入，用中文给出专业、简洁的复盘。
+        要求：
+        1. 判断用户观点和操作是否贴合当前市场节奏。
+        2. 指出最重要的风险点和明天需要观察的信号。
+        3. 给出3条明天可以执行的建议。
+        4. 不要承诺收益，不要使用夸张措辞。
 
-        Date: %s
-        View: %s
-        Action: %s
-        Position: %s
-        Concern: %s
-        Market context: %s
+        日期：%s
+        用户观点：%s
+        用户操作：%s
+        当前持仓：%s
+        主要担忧：%s
+        市场背景：%s
         """
         .formatted(
             fallback(request.tradeDate(), LocalDate.now().toString()),
-            fallback(request.viewpoint(), "n/a"),
-            fallback(request.operation(), "n/a"),
-            fallback(request.position(), "n/a"),
-            fallback(request.concern(), "n/a"),
-            fallback(request.marketContext(), "n/a"));
+            fallback(request.viewpoint(), "未填写"),
+            fallback(request.operation(), "未填写"),
+            fallback(request.position(), "未填写"),
+            fallback(request.concern(), "未填写"),
+            fallback(request.marketContext(), "未填写"));
   }
 
   private String fallbackReview(AiReviewRequest request) {
     return """
-        OPENAI_API_KEY is not configured yet, so here is a local review:
+        当前服务器还没有配置 OPENAI_API_KEY，因此先给出本地简版复盘：
 
-        Your view: %s
-        Your action: %s
+        你的观点：%s
+        你的操作：%s
 
-        Market context: %s
+        市场背景：%s
 
-        Suggestions:
-        1. Check whether your action is aligned with the market leader.
-        2. Keep the position size flexible if the money flow is not persistent.
-        3. Focus on continuity in the strongest sector tomorrow.
+        建议：
+        1. 先确认你的操作是否和市场主线同向。
+        2. 如果资金流入没有持续性，仓位不要过满。
+        3. 明天优先观察强势板块的延续性和分歧后的承接。
         """
         .formatted(
-            fallback(request.viewpoint(), "n/a"),
-            fallback(request.operation(), "n/a"),
-            fallback(request.marketContext(), "n/a"));
+            fallback(request.viewpoint(), "未填写"),
+            fallback(request.operation(), "未填写"),
+            fallback(request.marketContext(), "未填写"));
   }
 
   private String plainCode(String secid) {
@@ -735,9 +734,9 @@ public class MarketService {
     int heat = (int) Math.round(((up + flat * 0.5) / Math.max(boards.size(), 1)) * 70
         + clamp(avgIndexPct * 6, -15, 15) + 15);
     heat = (int) clamp(heat, 0, 100);
-    String label = heat >= 66 ? "Hot" : heat <= 38 ? "Cold" : "Range";
+    String label = heat >= 66 ? "偏热" : heat <= 38 ? "偏冷" : "震荡";
     String detail = String.format(Locale.CHINA,
-        "Boards up %d, down %d; average index change %+.2f%%.",
+        "板块上涨 %d 个、下跌 %d 个，主要指数平均涨跌幅 %+.2f%%。",
         up, down, avgIndexPct);
     return new MarketMood(label, heat, up, down, flat, avgIndexPct, detail);
   }
@@ -747,22 +746,22 @@ public class MarketService {
     String weakIndustries = topText(industries, true);
     String topConcepts = topText(concepts, false);
     String breadth = mood.down() > mood.up() * 1.4
-        ? "Down boards clearly outnumber up boards."
+        ? "下跌板块明显多于上涨板块，资金防守意愿更强。"
         : mood.up() > mood.down() * 1.4
-            ? "Up boards clearly outnumber down boards."
-            : "Breadth is still split and rotational.";
+            ? "上涨板块明显多于下跌板块，市场扩散度较好。"
+            : "涨跌板块数量接近，市场仍处于结构分化阶段。";
     String indexTone = mood.avgIndexPct() > 0.45
-        ? "Major indices are leaning stronger."
+        ? "主要指数整体偏强，权重和成长方向至少有一端在提供支撑。"
         : mood.avgIndexPct() < -0.45
-            ? "Major indices are under pressure."
-            : "Major indices are mostly range-bound.";
-    return "%s %s Leaders: %s. Weakness: %s. Concepts: %s. Short term focuses on volume and breadth, medium term on earnings and policy, long term on industrial upgrade and capital returns."
+            ? "主要指数整体承压，风险偏好仍需修复。"
+            : "主要指数波动不大，盘面更依赖板块轮动。";
+    return "%s %s 行业层面，领涨方向集中在 %s，弱势方向主要是 %s。概念层面，热点包括 %s。短线看量能和扩散，中线看盈利与政策，长期看产业升级与资本回报。"
         .formatted(
             breadth,
             indexTone,
-            fallback(topIndustries, "n/a"),
-            fallback(weakIndustries, "n/a"),
-            fallback(topConcepts, "n/a"));
+            fallback(topIndustries, "暂无明显方向"),
+            fallback(weakIndustries, "暂无明显方向"),
+            fallback(topConcepts, "暂无明显方向"));
   }
 
   private String topText(List<QuoteItem> rows, boolean weakest) {
@@ -774,7 +773,7 @@ public class MarketService {
         .sorted(comparator)
         .limit(3)
         .map(item -> "%s%+.2f%%".formatted(item.name(), item.pct()))
-        .collect(Collectors.joining(", "));
+        .collect(Collectors.joining("，"));
   }
 
   private String fetchEarningsDate(FeedSpec spec) {
