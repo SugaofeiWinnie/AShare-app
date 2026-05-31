@@ -105,7 +105,8 @@ public final class MarketDtos {
       int todayDays,
       int yesterdayDays,
       double pct,
-      String firstLimit) {}
+      String firstLimit,
+      boolean intradayBroken) {}
 
   public record LadderSummary(
       String todayDate,

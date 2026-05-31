@@ -30,9 +30,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -298,29 +300,72 @@ public class MarketService {
     Pool yesterday = findLimitPool(LocalDate.parse(today.date(), TRADE_DATE), -1);
     Map<String, LimitStock> todayMap = today.pool().stream()
         .collect(Collectors.toMap(LimitStock::code, Function.identity(), (a, b) -> a, LinkedHashMap::new));
+    Map<String, LimitStock> brokenMap = brokenPool(today.date()).stream()
+        .collect(Collectors.toMap(LimitStock::code, Function.identity(), (a, b) -> a, LinkedHashMap::new));
 
-    List<LadderRow> rows = yesterday.pool().stream()
-        .map(stock -> {
-          LimitStock promoted = todayMap.get(stock.code());
-          return new LadderRow(
+    Set<String> yesterdayCodes = yesterday.pool().stream()
+        .map(LimitStock::code)
+        .collect(Collectors.toCollection(LinkedHashSet::new));
+    Set<String> usedCodes = new LinkedHashSet<>();
+    List<LadderRow> rows = new ArrayList<>();
+    yesterday.pool().forEach(stock -> {
+      LimitStock promoted = todayMap.get(stock.code());
+      LimitStock broken = brokenMap.get(stock.code());
+      int brokenDays = broken == null ? 0 : Math.max(broken.days(), stock.lbc() + 1);
+      boolean intradayBroken = promoted == null && broken != null && brokenDays >= 2;
+      rows.add(new LadderRow(
+          stock.code(),
+          stock.name(),
+          promoted == null ? (broken == null ? stock.industry() : broken.industry()) : promoted.industry(),
+          promoted != null,
+          promoted == null ? (intradayBroken ? brokenDays : 0) : Math.max(promoted.lbc(), stock.lbc() + 1),
+          stock.lbc(),
+          promoted == null ? (broken == null ? stock.pct() : broken.pct()) : promoted.pct(),
+          promoted == null ? (broken == null ? stock.firstLimit() : broken.firstLimit()) : promoted.firstLimit(),
+          intradayBroken));
+      usedCodes.add(stock.code());
+    });
+    today.pool().stream()
+        .filter(stock -> stock.lbc() <= 1)
+        .filter(stock -> !yesterdayCodes.contains(stock.code()))
+        .forEach(stock -> {
+          rows.add(new LadderRow(
               stock.code(),
               stock.name(),
-              promoted == null ? stock.industry() : promoted.industry(),
-              promoted != null,
-              promoted == null ? 0 : Math.max(promoted.lbc(), stock.lbc() + 1),
-              stock.lbc(),
-              promoted == null ? stock.pct() : promoted.pct(),
-              promoted == null ? stock.firstLimit() : promoted.firstLimit());
-        })
+              stock.industry(),
+              false,
+              1,
+              0,
+              stock.pct(),
+              stock.firstLimit(),
+              false));
+          usedCodes.add(stock.code());
+        });
+    brokenMap.values().stream()
+        .filter(stock -> stock.days() >= 2)
+        .filter(stock -> !usedCodes.contains(stock.code()))
+        .forEach(stock -> rows.add(new LadderRow(
+            stock.code(),
+            stock.name(),
+            stock.industry(),
+            false,
+            stock.days(),
+            Math.max(0, stock.days() - 1),
+            stock.pct(),
+            stock.firstLimit(),
+            true)));
+
+    List<LadderRow> sortedRows = rows.stream()
         .sorted(Comparator.comparing((LadderRow row) -> row.promoted()).reversed()
             .thenComparing(Comparator.comparingInt(LadderRow::todayDays).reversed())
+            .thenComparing(LadderRow::intradayBroken)
             .thenComparing(Comparator.comparingInt(LadderRow::yesterdayDays).reversed()))
         .toList();
 
-    int promotedCount = (int) rows.stream().filter(LadderRow::promoted).count();
-    int maxDays = rows.stream().mapToInt(LadderRow::todayDays).max().orElse(0);
+    int promotedCount = (int) sortedRows.stream().filter(LadderRow::promoted).count();
+    int maxDays = sortedRows.stream().mapToInt(LadderRow::todayDays).max().orElse(0);
     double rate = rows.isEmpty() ? 0 : promotedCount * 100.0 / rows.size();
-    return new LadderSummary(today.date(), yesterday.date(), rows.size(), promotedCount, rate, maxDays, rows);
+    return new LadderSummary(today.date(), yesterday.date(), rows.size(), promotedCount, rate, maxDays, sortedRows);
   }
 
   private List<GlobalMarketItem> globalMarkets() {
@@ -658,16 +703,28 @@ public class MarketService {
         cursor = cursor.plusDays(direction);
       }
       String date = cursor.format(TRADE_DATE);
-      List<LimitStock> pool = limitPool(date);
-      if (!pool.isEmpty()) {
-        return new Pool(date, pool);
+      Pool pool = limitPoolWithDate(date);
+      if (!pool.pool().isEmpty()) {
+        return pool;
       }
     }
     return new Pool(startDate.format(TRADE_DATE), List.of());
   }
 
   private List<LimitStock> limitPool(String date) {
-    UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(limitPoolUrl)
+    return limitPoolWithDate(date).pool();
+  }
+
+  private Pool limitPoolWithDate(String date) {
+    return topicPool(limitPoolUrl, date);
+  }
+
+  private List<LimitStock> brokenPool(String date) {
+    return topicPool(limitPoolUrl.replace("getTopicZTPool", "getTopicZBPool"), date).pool();
+  }
+
+  private Pool topicPool(String url, String date) {
+    UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url)
         .queryParam("ut", "7eea3edcaed734bea9cbfc24409ed989")
         .queryParam("dpt", "wz.ztzt")
         .queryParam("Pageindex", "0")
@@ -675,7 +732,11 @@ public class MarketService {
         .queryParam("sort", "fbt:asc")
         .queryParam("date", date);
     JsonNode payload = getJson(builder.toUriString(), "https://data.eastmoney.com/");
-    return rowsFrom(payload.path("data").path("pool")).stream().map(this::limitStock).toList();
+    JsonNode data = payload.path("data");
+    String qdate = data.path("qdate").asText(date);
+    String tradeDate = date.compareTo(qdate) > 0 ? qdate : date;
+    List<LimitStock> pool = rowsFrom(data.path("pool")).stream().map(this::limitStock).toList();
+    return new Pool(tradeDate, pool);
   }
 
   private List<JsonNode> rowsFrom(JsonNode node) {
