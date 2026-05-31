@@ -300,65 +300,39 @@ public class MarketService {
     Pool yesterday = findLimitPool(LocalDate.parse(today.date(), TRADE_DATE), -1);
     Map<String, LimitStock> todayMap = today.pool().stream()
         .collect(Collectors.toMap(LimitStock::code, Function.identity(), (a, b) -> a, LinkedHashMap::new));
-    Map<String, LimitStock> brokenMap = brokenPool(today.date()).stream()
-        .collect(Collectors.toMap(LimitStock::code, Function.identity(), (a, b) -> a, LinkedHashMap::new));
 
     Set<String> yesterdayCodes = yesterday.pool().stream()
         .map(LimitStock::code)
         .collect(Collectors.toCollection(LinkedHashSet::new));
-    Set<String> usedCodes = new LinkedHashSet<>();
     List<LadderRow> rows = new ArrayList<>();
     yesterday.pool().forEach(stock -> {
       LimitStock promoted = todayMap.get(stock.code());
-      LimitStock broken = brokenMap.get(stock.code());
-      int brokenDays = broken == null ? 0 : Math.max(broken.days(), stock.lbc() + 1);
-      boolean intradayBroken = promoted == null && broken != null && brokenDays >= 2;
       rows.add(new LadderRow(
           stock.code(),
           stock.name(),
-          promoted == null ? (broken == null ? stock.industry() : broken.industry()) : promoted.industry(),
+          promoted == null ? stock.industry() : promoted.industry(),
           promoted != null,
-          promoted == null ? (intradayBroken ? brokenDays : 0) : Math.max(promoted.lbc(), stock.lbc() + 1),
+          promoted == null ? 0 : Math.max(promoted.lbc(), stock.lbc() + 1),
           stock.lbc(),
-          promoted == null ? (broken == null ? stock.pct() : broken.pct()) : promoted.pct(),
-          promoted == null ? (broken == null ? stock.firstLimit() : broken.firstLimit()) : promoted.firstLimit(),
-          intradayBroken));
-      usedCodes.add(stock.code());
+          promoted == null ? stock.pct() : promoted.pct(),
+          promoted == null ? stock.firstLimit() : promoted.firstLimit()));
     });
     today.pool().stream()
         .filter(stock -> stock.lbc() <= 1)
         .filter(stock -> !yesterdayCodes.contains(stock.code()))
-        .forEach(stock -> {
-          rows.add(new LadderRow(
-              stock.code(),
-              stock.name(),
-              stock.industry(),
-              false,
-              1,
-              0,
-              stock.pct(),
-              stock.firstLimit(),
-              false));
-          usedCodes.add(stock.code());
-        });
-    brokenMap.values().stream()
-        .filter(stock -> stock.days() >= 2)
-        .filter(stock -> !usedCodes.contains(stock.code()))
         .forEach(stock -> rows.add(new LadderRow(
             stock.code(),
             stock.name(),
             stock.industry(),
             false,
-            stock.days(),
-            Math.max(0, stock.days() - 1),
+            1,
+            0,
             stock.pct(),
-            stock.firstLimit(),
-            true)));
+            stock.firstLimit())));
 
     List<LadderRow> sortedRows = rows.stream()
         .sorted(Comparator.comparing((LadderRow row) -> row.promoted()).reversed()
             .thenComparing(Comparator.comparingInt(LadderRow::todayDays).reversed())
-            .thenComparing(LadderRow::intradayBroken)
             .thenComparing(Comparator.comparingInt(LadderRow::yesterdayDays).reversed()))
         .toList();
 
@@ -717,10 +691,6 @@ public class MarketService {
 
   private Pool limitPoolWithDate(String date) {
     return topicPool(limitPoolUrl, date);
-  }
-
-  private List<LimitStock> brokenPool(String date) {
-    return topicPool(limitPoolUrl.replace("getTopicZTPool", "getTopicZBPool"), date).pool();
   }
 
   private Pool topicPool(String url, String date) {
