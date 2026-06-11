@@ -20,3 +20,6 @@ ashare:
     quote-base-url: https://push2delay.eastmoney.com/api/qt
     trend-base-url: https://push2delay.eastmoney.com/api/qt/stock/trends2/get
     limit-pool-url: https://push2ex.eastmoney.com/getTopicZTPool
+  worker:
+    cwd: ${ASHARE_WORKER_CWD:/root/projects/AShare-worker}
+    python-command: ${ASHARE_WORKER_PYTHON:python3}
