@@ -151,4 +151,54 @@ public final class MarketDtos {
       String model,
       String reply,
       String generatedAt) {}
+
+  public record StockReportGenerateRequest(String code, boolean forceRefresh) {}
+
+  public record StockReportResponse(
+      String reportId,
+      String stockCode,
+      String stockName,
+      String reportDate,
+      double price,
+      double pct,
+      String verdict,
+      int score,
+      boolean aiGenerated,
+      String model,
+      StockReportContent content,
+      String createdAt,
+      String updatedAt) {}
+
+  public record StockReportContent(
+      String summary,
+      List<ReportMetric> metrics,
+      List<String> coreConclusions,
+      List<InvestorView> investorViews,
+      List<ScanDimension> deepScan,
+      ValuationModel valuation,
+      List<String> risks,
+      List<String> catalysts,
+      List<BuyZone> buyZones,
+      String disclaimer) {}
+
+  public record ReportMetric(String label, String value, String tone) {}
+
+  public record InvestorView(
+      String school,
+      String name,
+      String stance,
+      int score,
+      String conclusion,
+      String reason) {}
+
+  public record ScanDimension(String name, int score, String status, String detail) {}
+
+  public record ValuationModel(
+      double bearPrice,
+      double basePrice,
+      double bullPrice,
+      String method,
+      List<String> assumptions) {}
+
+  public record BuyZone(String name, double low, double high, String note) {}
 }
